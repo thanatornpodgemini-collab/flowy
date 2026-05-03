@@ -79,6 +79,175 @@ A drag-and-drop workflow designer for Product Marketing Managers, built on top o
 
 ---
 
+## Feature request — Canvas Zoom (2026-05-03)
+
+### Design
+
+**Goal:** Let users zoom in/out on the workflow canvas to navigate large trees without scrolling everywhere.
+
+**UI — floating zoom pill (bottom-right of canvas)**
+```
+[ − ]  [ 100% ]  [ + ]  [ ⊡ ]
+```
+- Positioned `absolute; bottom: 12px; right: 12px; z-index: 10` inside `#canvas-wrap`
+- `−` decreases zoom by 25%, `+` increases by 25%, `⊡` resets to 100%
+- Percentage label is read-only, shows current zoom (e.g. `75%`)
+- Ctrl/Cmd + scroll wheel on the canvas also zooms in/out (25% step, preventDefault)
+- Zoom range: **25% – 200%**. Clamp at both ends, disable the button at the limit.
+
+**HTML to add in `demo/index.html`** (inside `<section id="canvas-wrap">`, after `<div id="canvas">`):
+```html
+<div id="zoom-controls">
+  <button id="zoom-out" title="Zoom out">−</button>
+  <span id="zoom-label">100%</span>
+  <button id="zoom-in" title="Zoom in">+</button>
+  <button id="zoom-reset" title="Reset zoom">⊡</button>
+</div>
+```
+
+**CSS to add in `demo/styles.css`:**
+```css
+#zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid #d5d7c8;
+  border-radius: 8px;
+  padding: 4px 8px;
+  backdrop-filter: blur(6px);
+}
+#zoom-controls button {
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+#zoom-controls button:hover { background: #f2f2ec; }
+#zoom-controls button:disabled { opacity: 0.35; cursor: default; }
+#zoom-label {
+  font-size: 12px;
+  min-width: 36px;
+  text-align: center;
+  color: #3d4033;
+  font-weight: 500;
+}
+```
+
+**Coordinate math — why zoom must be threaded into flowy**
+
+`flowy.js` reads `event.clientX/Y` for mouse position and `el.getBoundingClientRect()` for block positions. When the canvas content is CSS-scaled, `getBoundingClientRect()` returns *scaled* pixel values, so all snap/attach/layout math drifts by the zoom factor. The fix: divide every mouse coordinate and every `getBoundingClientRect` result by the current zoom level inside flowy.
+
+**Implementation plan (3 files)**
+
+### 1. `engine/flowy.js`
+
+Add a module-level zoom variable and expose a setter:
+
+```js
+// near top of flowy.load(), before the existing vars:
+var zoom = 1;
+flowy.setZoom = function(level) { zoom = level; };
+```
+
+Everywhere flowy reads a mouse position (there are exactly 4 places — `beginDrag`, `moveBlock`, and `touchblock`), divide by zoom:
+
+```js
+// beginDrag (~line 129)
+mouse_x = event.changedTouches[0].clientX / zoom;
+mouse_y = event.changedTouches[0].clientY / zoom;
+// ... and the else branch:
+mouse_x = event.clientX / zoom;
+mouse_y = event.clientY / zoom;
+
+// moveBlock (~line 435) — same pattern, both touch and mouse branches
+// touchblock (~line 407) — same pattern
+```
+
+Everywhere flowy calls `.getBoundingClientRect()` on a **drag element** (not canvas_div — that stays in screen space), divide the result by zoom. The safest way: add a helper inside `flowy.load()`:
+
+```js
+function scaled(rect) {
+  return {
+    left:   rect.left   / zoom,
+    top:    rect.top    / zoom,
+    right:  rect.right  / zoom,
+    bottom: rect.bottom / zoom,
+    width:  rect.width  / zoom,
+    height: rect.height / zoom
+  };
+}
+```
+
+Then replace every `drag.getBoundingClientRect()` and `blockParent.getBoundingClientRect()` call with `scaled(drag.getBoundingClientRect())` etc. **Do not** scale `canvas_div.getBoundingClientRect()` — it is in screen space and should stay unscaled.
+
+### 2. `demo/index.html`
+
+Add the zoom controls HTML block inside `<section id="canvas-wrap">`, after `<div id="canvas">`:
+
+```html
+<div id="zoom-controls">
+  <button id="zoom-out" title="Zoom out">−</button>
+  <span id="zoom-label">100%</span>
+  <button id="zoom-in" title="Zoom in">+</button>
+  <button id="zoom-reset" title="Reset zoom">⊡</button>
+</div>
+```
+
+### 3. `demo/main.js`
+
+Add zoom state and wiring inside the `DOMContentLoaded` callback, after the `flowy(...)` init call:
+
+```js
+// Zoom
+let zoomLevel = 1.0;
+const ZOOM_STEP = 0.25;
+const ZOOM_MIN  = 0.25;
+const ZOOM_MAX  = 2.0;
+const canvas    = document.getElementById('canvas');  // already declared above
+
+function applyZoom(level) {
+  zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, level));
+  canvas.style.transform       = `scale(${zoomLevel})`;
+  canvas.style.transformOrigin = '0 0';
+  // Expand canvas-wrap scroll area so scrollbars reflect full scaled size
+  canvas.style.width  = `${100 / zoomLevel}%`;
+  canvas.style.height = `${100 / zoomLevel}%`;
+  document.getElementById('zoom-label').textContent = `${Math.round(zoomLevel * 100)}%`;
+  document.getElementById('zoom-out').disabled   = zoomLevel <= ZOOM_MIN;
+  document.getElementById('zoom-in').disabled    = zoomLevel >= ZOOM_MAX;
+  flowy.setZoom(zoomLevel);
+}
+
+document.getElementById('zoom-in').addEventListener('click',    () => applyZoom(zoomLevel + ZOOM_STEP));
+document.getElementById('zoom-out').addEventListener('click',   () => applyZoom(zoomLevel - ZOOM_STEP));
+document.getElementById('zoom-reset').addEventListener('click', () => applyZoom(1.0));
+
+document.getElementById('canvas-wrap').addEventListener('wheel', (e) => {
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault();
+    applyZoom(zoomLevel + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+  }
+}, { passive: false });
+```
+
+### Acceptance criteria
+- [ ] Zoom in/out/reset buttons appear bottom-right of canvas
+- [ ] Ctrl/Cmd+scroll wheel adjusts zoom on the canvas
+- [ ] Buttons disable at 25% and 200% limits
+- [ ] Drag-and-drop still works correctly at all zoom levels (block snaps to correct parent)
+- [ ] "Build Starter Flow" renders correctly at non-100% zoom
+- [ ] Zoom state does NOT persist to localStorage (always resets to 100% on reload)
+
+---
+
 ## ~~Open issue — branching tree not rendering~~ — RESOLVED (2026-05-03)
 
 **Root cause:** `flowy.import()` in `engine/flowy.js` calls `rearrangeMe()` and `checkOffset()` after setting `canvas_div.innerHTML`. `rearrangeMe()` recalculates and overwrites every block's `left`/`top` using flowy's own linear stacking algorithm — completely discarding the custom tree positions set in `buildStarterFlowImport`. Branching nodes all get stacked in a single vertical column.

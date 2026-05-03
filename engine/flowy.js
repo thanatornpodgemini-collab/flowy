@@ -51,6 +51,7 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
             absy = canvas_div.getBoundingClientRect().top;
         }
         var active = false;
+        var zoom = 1;
         var paddingx = spacing_x;
         var paddingy = spacing_y;
         var offsetleft = 0;
@@ -63,6 +64,21 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
         el.classList.add('indicator');
         el.classList.add('invisible');
         canvas_div.appendChild(el);
+        flowy.setZoom = function(level) {
+            zoom = level;
+        }
+
+        function scaled(rect) {
+            return {
+                left: rect.left / zoom,
+                top: rect.top / zoom,
+                right: rect.right / zoom,
+                bottom: rect.bottom / zoom,
+                width: rect.width / zoom,
+                height: rect.height / zoom
+            };
+        }
+
         flowy.import = function(output, skipRearrange) {
             canvas_div.innerHTML = output.html;
             for (var a = 0; a < output.blockarr.length; a++) {
@@ -125,11 +141,11 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
                 absy = canvas_div.getBoundingClientRect().top;
             }
             if (event.targetTouches) {
-                mouse_x = event.changedTouches[0].clientX;
-                mouse_y = event.changedTouches[0].clientY;
+                mouse_x = event.changedTouches[0].clientX / zoom;
+                mouse_y = event.changedTouches[0].clientY / zoom;
             } else {
-                mouse_x = event.clientX;
-                mouse_y = event.clientY;
+                mouse_x = event.clientX / zoom;
+                mouse_y = event.clientY / zoom;
             }
             if (event.which != 3 && event.target.closest(".create-flowy")) {
                 original = event.target.closest(".create-flowy");
@@ -169,7 +185,7 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
                 }
                 if (parseInt(drag.querySelector(".blockid").value) === 0 && rearrange) {
                     firstBlock("rearrange")    
-                } else if (active && blocks.length == 0 && (drag.getBoundingClientRect().top + window.scrollY) > (canvas_div.getBoundingClientRect().top + window.scrollY) && (drag.getBoundingClientRect().left + window.scrollX) > (canvas_div.getBoundingClientRect().left + window.scrollX)) {
+                } else if (active && blocks.length == 0 && (scaled(drag.getBoundingClientRect()).top + window.scrollY) > (canvas_div.getBoundingClientRect().top + window.scrollY) && (scaled(drag.getBoundingClientRect()).left + window.scrollX) > (canvas_div.getBoundingClientRect().left + window.scrollX)) {
                     firstBlock("drop");
                 } else if (active && blocks.length == 0) {
                     removeSelection();
@@ -218,8 +234,8 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
         }
         
         function checkAttach(id) {
-            const xpos = (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-            const ypos = (drag.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+            const xpos = (scaled(drag.getBoundingClientRect()).left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+            const ypos = (scaled(drag.getBoundingClientRect()).top + window.scrollY) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
             if (xpos >= blocks.filter(a => a.id == id)[0].x - (blocks.filter(a => a.id == id)[0].width / 2) - paddingx && xpos <= blocks.filter(a => a.id == id)[0].x + (blocks.filter(a => a.id == id)[0].width / 2) + paddingx && ypos >= blocks.filter(a => a.id == id)[0].y - (blocks.filter(a => a.id == id)[0].height / 2) && ypos <= blocks.filter(a => a.id == id)[0].y + blocks.filter(a => a.id == id)[0].height) {
                 return true;   
             } else {
@@ -236,15 +252,15 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
             if (type == "drop") {
                 blockSnap(drag, true, undefined);
                 active = false;
-                drag.style.top = (drag.getBoundingClientRect().top + window.scrollY) - (absy + window.scrollY) + canvas_div.scrollTop + "px";
-                drag.style.left = (drag.getBoundingClientRect().left + window.scrollX) - (absx + window.scrollX) + canvas_div.scrollLeft + "px";
+                drag.style.top = (scaled(drag.getBoundingClientRect()).top + window.scrollY) - (absy + window.scrollY) + canvas_div.scrollTop + "px";
+                drag.style.left = (scaled(drag.getBoundingClientRect()).left + window.scrollX) - (absx + window.scrollX) + canvas_div.scrollLeft + "px";
                 canvas_div.appendChild(drag);
                 blocks.push({
                     parent: -1,
                     childwidth: 0,
                     id: parseInt(drag.querySelector(".blockid").value),
-                    x: (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left,
-                    y: (drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top,
+                    x: (scaled(drag.getBoundingClientRect()).left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left,
+                    y: (scaled(drag.getBoundingClientRect()).top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top,
                     width: parseInt(window.getComputedStyle(drag).width),
                     height: parseInt(window.getComputedStyle(drag).height)
                 });
@@ -255,18 +271,18 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
                     if (blockstemp[w].id != parseInt(drag.querySelector(".blockid").value)) {
                         const blockParent = document.querySelector(".blockid[value='" + blockstemp[w].id + "']").parentNode;
                         const arrowParent = document.querySelector(".arrowid[value='" + blockstemp[w].id + "']").parentNode;
-                        blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - 1 - absx + "px";
-                        blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY) + canvas_div.scrollTop - absy - 1 + "px";
+                        blockParent.style.left = (scaled(blockParent.getBoundingClientRect()).left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - 1 - absx + "px";
+                        blockParent.style.top = (scaled(blockParent.getBoundingClientRect()).top + window.scrollY) - (window.scrollY) + canvas_div.scrollTop - absy - 1 + "px";
                         arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX) + canvas_div.scrollLeft - absx - 1 + "px";
                         arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - 1 - absy + "px";
                         canvas_div.appendChild(blockParent);
                         canvas_div.appendChild(arrowParent);
-                        blockstemp[w].x = (blockParent.getBoundingClientRect().left + window.scrollX) + (parseInt(blockParent.offsetWidth) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left - 1;
-                        blockstemp[w].y = (blockParent.getBoundingClientRect().top + window.scrollY) + (parseInt(blockParent.offsetHeight) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top - 1;
+                        blockstemp[w].x = (scaled(blockParent.getBoundingClientRect()).left + window.scrollX) + (parseInt(blockParent.offsetWidth) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left - 1;
+                        blockstemp[w].y = (scaled(blockParent.getBoundingClientRect()).top + window.scrollY) + (parseInt(blockParent.offsetHeight) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top - 1;
                     }
                 }
-                blockstemp.filter(a => a.id == 0)[0].x = (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-                blockstemp.filter(a => a.id == 0)[0].y = (drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+                blockstemp.filter(a => a.id == 0)[0].x = (scaled(drag.getBoundingClientRect()).left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+                blockstemp.filter(a => a.id == 0)[0].y = (scaled(drag.getBoundingClientRect()).top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
                 blocks = blocks.concat(blockstemp);
                 blockstemp = [];
             }
@@ -327,22 +343,22 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
             drag.style.left = parentBlock.x - (totalwidth / 2) + totalremove - (window.scrollX + absx) + canvas_div.scrollLeft + canvas_div.getBoundingClientRect().left + "px";
             drag.style.top = parentBlock.y + (parentBlock.height / 2) + paddingy - (window.scrollY + absy) + canvas_div.getBoundingClientRect().top + "px";
             if (rearrange) {
-                blockstemp.filter(a => a.id == parseInt(drag.querySelector(".blockid").value))[0].x = (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-                blockstemp.filter(a => a.id == parseInt(drag.querySelector(".blockid").value))[0].y = (drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+                blockstemp.filter(a => a.id == parseInt(drag.querySelector(".blockid").value))[0].x = (scaled(drag.getBoundingClientRect()).left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+                blockstemp.filter(a => a.id == parseInt(drag.querySelector(".blockid").value))[0].y = (scaled(drag.getBoundingClientRect()).top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
                 blockstemp.filter(a => a.id === parseInt(drag.querySelector(".blockid").value))[0].parent = blocko[i];
                 for (var w = 0; w < blockstemp.length; w++) {
                     if (blockstemp[w].id != parseInt(drag.querySelector(".blockid").value)) {
                         const blockParent = document.querySelector(".blockid[value='" + blockstemp[w].id + "']").parentNode;
                         const arrowParent = document.querySelector(".arrowid[value='" + blockstemp[w].id + "']").parentNode;
-                        blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX + canvas_div.getBoundingClientRect().left) + canvas_div.scrollLeft + "px";
-                        blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY + canvas_div.getBoundingClientRect().top) + canvas_div.scrollTop + "px";
+                        blockParent.style.left = (scaled(blockParent.getBoundingClientRect()).left + window.scrollX) - (window.scrollX + canvas_div.getBoundingClientRect().left) + canvas_div.scrollLeft + "px";
+                        blockParent.style.top = (scaled(blockParent.getBoundingClientRect()).top + window.scrollY) - (window.scrollY + canvas_div.getBoundingClientRect().top) + canvas_div.scrollTop + "px";
                         arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (window.scrollX + canvas_div.getBoundingClientRect().left) + canvas_div.scrollLeft + 20 + "px";
                         arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) - (window.scrollY + canvas_div.getBoundingClientRect().top) + canvas_div.scrollTop + "px";
                         canvas_div.appendChild(blockParent);
                         canvas_div.appendChild(arrowParent);
 
-                        blockstemp[w].x = (blockParent.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(blockParent).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-                        blockstemp[w].y = (blockParent.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(blockParent).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+                        blockstemp[w].x = (scaled(blockParent.getBoundingClientRect()).left + window.scrollX) + (parseInt(window.getComputedStyle(blockParent).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+                        blockstemp[w].y = (scaled(blockParent.getBoundingClientRect()).top + window.scrollY) + (parseInt(window.getComputedStyle(blockParent).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
                     }
                 }
                 blocks = blocks.concat(blockstemp);
@@ -352,8 +368,8 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
                     childwidth: 0,
                     parent: blocko[i],
                     id: parseInt(drag.querySelector(".blockid").value),
-                    x: (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left,
-                    y: (drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top,
+                    x: (scaled(drag.getBoundingClientRect()).left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left,
+                    y: (scaled(drag.getBoundingClientRect()).top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top,
                     width: parseInt(window.getComputedStyle(drag).width),
                     height: parseInt(window.getComputedStyle(drag).height)
                 });
@@ -407,19 +423,19 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
             if (hasParentClass(event.target, "block")) {
                 var theblock = event.target.closest(".block");
                 if (event.targetTouches) {
-                    mouse_x = event.targetTouches[0].clientX;
-                    mouse_y = event.targetTouches[0].clientY;
+                    mouse_x = event.targetTouches[0].clientX / zoom;
+                    mouse_y = event.targetTouches[0].clientY / zoom;
                 } else {
-                    mouse_x = event.clientX;
-                    mouse_y = event.clientY;
+                    mouse_x = event.clientX / zoom;
+                    mouse_y = event.clientY / zoom;
                 }
                 if (event.type !== "mouseup" && hasParentClass(event.target, "block")) {
                     if (event.which != 3) {
                         if (!active && !rearrange) {
                             dragblock = true;
                             drag = theblock;
-                            dragx = mouse_x - (drag.getBoundingClientRect().left + window.scrollX);
-                            dragy = mouse_y - (drag.getBoundingClientRect().top + window.scrollY);
+                            dragx = mouse_x - (scaled(drag.getBoundingClientRect()).left + window.scrollX);
+                            dragy = mouse_y - (scaled(drag.getBoundingClientRect()).top + window.scrollY);
                         }
                     }
                 }
@@ -435,11 +451,11 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
 
         flowy.moveBlock = function(event) {
             if (event.targetTouches) {
-                mouse_x = event.targetTouches[0].clientX;
-                mouse_y = event.targetTouches[0].clientY;
+                mouse_x = event.targetTouches[0].clientX / zoom;
+                mouse_y = event.targetTouches[0].clientY / zoom;
             } else {
-                mouse_x = event.clientX;
-                mouse_y = event.clientY;
+                mouse_x = event.clientX / zoom;
+                mouse_y = event.clientY / zoom;
             }
             if (dragblock) {
                 rearrange = true;
@@ -463,10 +479,10 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
                             blockstemp.push(blocks.filter(a => a.id == layer[i].id)[0]);
                             const blockParent = document.querySelector(".blockid[value='" + layer[i].id + "']").parentNode;
                             const arrowParent = document.querySelector(".arrowid[value='" + layer[i].id + "']").parentNode;
-                            blockParent.style.left = (blockParent.getBoundingClientRect().left + window.scrollX) - (drag.getBoundingClientRect().left + window.scrollX) + "px";
-                            blockParent.style.top = (blockParent.getBoundingClientRect().top + window.scrollY) - (drag.getBoundingClientRect().top + window.scrollY) + "px";
-                            arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (drag.getBoundingClientRect().left + window.scrollX) + "px";
-                            arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) - (drag.getBoundingClientRect().top + window.scrollY) + "px";
+                            blockParent.style.left = (scaled(blockParent.getBoundingClientRect()).left + window.scrollX) - (scaled(drag.getBoundingClientRect()).left + window.scrollX) + "px";
+                            blockParent.style.top = (scaled(blockParent.getBoundingClientRect()).top + window.scrollY) - (scaled(drag.getBoundingClientRect()).top + window.scrollY) + "px";
+                            arrowParent.style.left = (arrowParent.getBoundingClientRect().left + window.scrollX) - (scaled(drag.getBoundingClientRect()).left + window.scrollX) + "px";
+                            arrowParent.style.top = (arrowParent.getBoundingClientRect().top + window.scrollY) - (scaled(drag.getBoundingClientRect()).top + window.scrollY) + "px";
                             drag.appendChild(blockParent);
                             drag.appendChild(arrowParent);
                             foundids.push(layer[i].id);
@@ -503,8 +519,8 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
             } else if (rearrange) {
                 drag.style.left = mouse_x - dragx - (window.scrollX + absx) + canvas_div.scrollLeft + "px";
                 drag.style.top = mouse_y - dragy - (window.scrollY + absy) + canvas_div.scrollTop + "px";
-                blockstemp.filter(a => a.id == parseInt(drag.querySelector(".blockid").value)).x = (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft;
-                blockstemp.filter(a => a.id == parseInt(drag.querySelector(".blockid").value)).y = (drag.getBoundingClientRect().top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop;
+                blockstemp.filter(a => a.id == parseInt(drag.querySelector(".blockid").value)).x = (scaled(drag.getBoundingClientRect()).left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft;
+                blockstemp.filter(a => a.id == parseInt(drag.querySelector(".blockid").value)).y = (scaled(drag.getBoundingClientRect()).top + window.scrollY) + (parseInt(window.getComputedStyle(drag).height) / 2) + canvas_div.scrollTop;
             }
             if (active || rearrange) {
                 if (mouse_x > canvas_div.getBoundingClientRect().width + canvas_div.getBoundingClientRect().left - 10 && mouse_x < canvas_div.getBoundingClientRect().width + canvas_div.getBoundingClientRect().left + 10) {
@@ -516,8 +532,8 @@ var flowy = function(canvas, grab, release, snapping, rearrange, spacing_x, spac
                 } else if (mouse_y < canvas_div.getBoundingClientRect().top + 10 && mouse_y > canvas_div.getBoundingClientRect().top - 10) {
                     canvas_div.scrollTop -= 10;
                 }
-                var xpos = (drag.getBoundingClientRect().left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
-                var ypos = (drag.getBoundingClientRect().top + window.scrollY) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
+                var xpos = (scaled(drag.getBoundingClientRect()).left + window.scrollX) + (parseInt(window.getComputedStyle(drag).width) / 2) + canvas_div.scrollLeft - canvas_div.getBoundingClientRect().left;
+                var ypos = (scaled(drag.getBoundingClientRect()).top + window.scrollY) + canvas_div.scrollTop - canvas_div.getBoundingClientRect().top;
                 var blocko = blocks.map(a => a.id);
                 for (var i = 0; i < blocks.length; i++) {
                     if (checkAttach(blocko[i])) {

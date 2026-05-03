@@ -149,6 +149,36 @@ document.addEventListener("DOMContentLoaded", () => {
 
   flowy(canvas, () => {}, () => {}, snap, () => true, 30, 90);
 
+  let zoomLevel = 1.0;
+  const ZOOM_STEP = 0.25;
+  const ZOOM_MIN = 0.25;
+  const ZOOM_MAX = 2.0;
+
+  function applyZoom(level) {
+    zoomLevel = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, level));
+    canvas.style.transform = `scale(${zoomLevel})`;
+    canvas.style.transformOrigin = "0 0";
+    canvas.style.width = `${100 / zoomLevel}%`;
+    canvas.style.height = `${100 / zoomLevel}%`;
+    document.getElementById("zoom-label").textContent = `${Math.round(zoomLevel * 100)}%`;
+    document.getElementById("zoom-out").disabled = zoomLevel <= ZOOM_MIN;
+    document.getElementById("zoom-in").disabled = zoomLevel >= ZOOM_MAX;
+    flowy.setZoom(zoomLevel);
+  }
+
+  document.getElementById("zoom-in").addEventListener("click", () => applyZoom(zoomLevel + ZOOM_STEP));
+  document.getElementById("zoom-out").addEventListener("click", () => applyZoom(zoomLevel - ZOOM_STEP));
+  document.getElementById("zoom-reset").addEventListener("click", () => applyZoom(1.0));
+
+  document.getElementById("canvas-wrap").addEventListener("wheel", (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      applyZoom(zoomLevel + (e.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+    }
+  }, { passive: false });
+
+  applyZoom(1.0);
+
   function getFlowBlocks() {
     const output = flowy.output();
     const result = [];
