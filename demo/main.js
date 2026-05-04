@@ -10,13 +10,51 @@ document.addEventListener("DOMContentLoaded", () => {
   let analyticsTimer;
 
   const templates = [
-    { type: "1", title: "Market Insight Intake", desc: "Collect product, customer, and market signal inputs", tag: "Standardized" },
-    { type: "2", title: "Message Framework Draft", desc: "Build positioning narrative and proof points", tag: "Standardized" },
-    { type: "3", title: "Sales Enablement Pack", desc: "Create pitch assets and objection handling", tag: "Standardized" },
-    { type: "4", title: "Owned Channel Orchestration", desc: "Coordinate website, email, community, and lifecycle", tag: "Owned Channels" },
-    { type: "5", title: "Localization Planning", desc: "Locale scope, region owner, and cultural checks", tag: "Localization UI+Content" },
-    { type: "6", title: "Localization Asset Production", desc: "Localized copy, screenshots, and launch kit", tag: "Localization UI+Content" },
-    { type: "7", title: "Performance Review Loop", desc: "Measure outcome, workload, and next iteration", tag: "Standardized" }
+    // Core / Standardized
+    { type: "1",  title: "Market Insight Intake",              desc: "Collect product, customer, and market signal inputs",              tag: "Standardized" },
+    { type: "2",  title: "Message Framework Draft",            desc: "Build positioning narrative and proof points",                    tag: "Standardized" },
+    { type: "3",  title: "Sales Enablement Pack",              desc: "Create pitch assets and objection handling",                      tag: "Standardized" },
+    { type: "4",  title: "Owned Channel Orchestration",        desc: "Coordinate website, email, community, and lifecycle",             tag: "Owned Channels" },
+    { type: "5",  title: "Localization Planning",              desc: "Locale scope, region owner, and cultural checks",                 tag: "Localization" },
+    { type: "6",  title: "Localization Asset Production",      desc: "Localized copy, screenshots, and launch kit",                    tag: "Localization" },
+    { type: "7",  title: "Performance Review Loop",            desc: "Measure outcome, workload, and next iteration",                   tag: "Standardized" },
+    // Competitive
+    { type: "8",  title: "Competitive Intelligence Brief",     desc: "Deep-dive analysis of a competitor's positioning and moves",     tag: "Competitive" },
+    { type: "9",  title: "Competitive Displacement Campaign",  desc: "Target competitor customers with migration incentives",           tag: "Competitive" },
+    // Stakeholder & Analysts
+    { type: "10", title: "Analyst Relations Prep",             desc: "Prepare briefings and inquiries for Gartner, Forrester, etc.",   tag: "Stakeholder" },
+    { type: "11", title: "Executive QBR Deck Preparation",     desc: "Synthesize PMM results and roadmap for exec review",             tag: "Enablement" },
+    // Strategy
+    { type: "12", title: "Pricing & Packaging Review",         desc: "Model tiers, validate with sales and finance, update collateral", tag: "Strategy" },
+    { type: "13", title: "Feature Announcement Playbook",      desc: "Coordinate internal and external comms for a product release",   tag: "GTM" },
+    { type: "14", title: "Sunsetting / Deprecation Comms",     desc: "Notify customers, update docs, and manage churn risk",           tag: "GTM" },
+    { type: "15", title: "Upsell / Cross-sell Motion Design",  desc: "Define trigger, message, and channel for expansion revenue",     tag: "GTM" },
+    { type: "16", title: "Free-to-Paid Conversion Playbook",   desc: "Map activation milestones and persuasion touchpoints",           tag: "GTM" },
+    { type: "17", title: "Product-Led Growth Loop Design",     desc: "Define viral loops, usage triggers, and in-product nudges",      tag: "GTM" },
+    // Customer & Research
+    { type: "18", title: "Customer Advocacy & Case Study",     desc: "Source customer wins, produce stories, distribute to sales",     tag: "Customer" },
+    { type: "19", title: "Voice of Customer Synthesis",        desc: "Aggregate VoC signals into themes for positioning updates",      tag: "Research" },
+    { type: "20", title: "Win/Loss Interview Program",         desc: "Run structured interviews and feed insights to messaging",       tag: "Research" },
+    { type: "21", title: "NPS & CSAT Deep Dive",               desc: "Analyze satisfaction trends and surface PMM action items",       tag: "Research" },
+    { type: "22", title: "Beta Program Coordination",          desc: "Recruit, onboard, and debrief beta participants",               tag: "Research" },
+    { type: "23", title: "Persona Refresh Workshop",           desc: "Update ICP and buyer personas with fresh data",                  tag: "Research" },
+    // Content & Campaigns
+    { type: "24", title: "Thought Leadership Content Series",  desc: "Plan, produce, and distribute POV content at scale",            tag: "Content" },
+    { type: "25", title: "Product Demo Script & Recording",    desc: "Script, record, and publish demo video assets",                  tag: "Content" },
+    { type: "26", title: "Email Nurture Sequence Build",       desc: "Design lifecycle emails tied to buyer journey stages",           tag: "Campaigns" },
+    { type: "27", title: "Paid Media Brief & Approval",        desc: "Define audience, creative brief, and budget for paid campaigns", tag: "Campaigns" },
+    { type: "28", title: "Social Proof & Review Generation",   desc: "Drive G2, Capterra, and Trustpilot reviews from customers",     tag: "Campaigns" },
+    { type: "29", title: "Podcast / Video Series Planning",    desc: "Produce episodic audio/video content for awareness",            tag: "Content" },
+    // Demand Gen
+    { type: "30", title: "ABM Campaign Brief",                 desc: "Define target accounts, personalized assets, and outreach",     tag: "Demand Gen" },
+    // Events
+    { type: "31", title: "Event / Webinar Production",         desc: "Coordinate speakers, promotion, and post-event follow-up",      tag: "Events" },
+    // Enablement & Internal
+    { type: "32", title: "Onboarding Curriculum Build",        desc: "Design PMM-led onboarding paths for sales and CS teams",        tag: "Enablement" },
+    { type: "33", title: "Internal Roadmap Communication",     desc: "Translate engineering roadmap into GTM-ready language",          tag: "Enablement" },
+    // Partners
+    { type: "34", title: "Partner Enablement Kit",             desc: "Produce joint value props, co-branded assets, and training",    tag: "Partners" },
+    { type: "35", title: "Channel / Reseller Briefing Pack",   desc: "Equip channel partners with messaging, tools, and incentives",  tag: "Partners" },
   ];
 
   const defaults = {
